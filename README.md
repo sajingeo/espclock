@@ -81,7 +81,9 @@ A beautiful ESP32-based weather clock with a 1.28" round TFT display that shows 
 After configuration, the device will:
 
 1. Show personalized greeting: "Hello [Your Name]!"
-2. Display the main weather screen with:
+2. Attempt to connect to WiFi (20 second timeout)
+3. If WiFi fails, automatically enter setup mode
+4. Display the main weather screen with:
    - Current time (updates every second)
    - Date
    - Location name
@@ -109,8 +111,8 @@ Two ways to factory reset:
    - Click "Factory Reset" button
    - Confirm the action
 
-2. **When WiFi Fails**:
-   - Device automatically enters setup mode after 3 failed connection attempts
+2. **Automatic Fallback**:
+   - Device automatically enters setup mode if WiFi connection fails
 
 ## Update Intervals
 
@@ -123,7 +125,7 @@ Two ways to factory reset:
 ### Device won't connect to WiFi
 - Check WiFi credentials are correct
 - Ensure WiFi network is 2.4GHz (ESP32 doesn't support 5GHz)
-- Device will automatically enter setup mode after 3 failed attempts
+- Device will automatically enter setup mode if connection fails (20 second timeout)
 
 ### Weather not updating
 - Verify OpenWeather API key is valid

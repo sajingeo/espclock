@@ -25,8 +25,8 @@ The screen displays the AP SSID and password during setup mode. Once configured,
 ### Regular Startup
 On power on, the device:
 1. Shows "Hello [USER NAME]!" with a smiley face animation for 3 seconds
-2. Attempts to connect to WiFi (up to 3 attempts)
-3. If connection fails after 3 attempts, automatically falls back to AP mode
+2. Attempts to connect to WiFi (20 second timeout)
+3. If connection fails, automatically falls back to AP mode for reconfiguration
 4. On successful connection, displays:
    - Current time (updates every second)
    - Date

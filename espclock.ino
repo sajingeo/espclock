@@ -428,11 +428,27 @@ void showGreetingScreen() {
 
 // Start AP mode for configuration
 void startAPMode() {
+  Serial.println("Starting AP Mode...");
   inAPMode = true;
   
+  // Clear any existing WiFi configuration
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  delay(200);
+  
+  // Set to AP mode
   WiFi.mode(WIFI_AP);
+  delay(200);
+  
+  // Configure and start AP
   WiFi.softAPConfig(apIP, apIP, IPAddress(255, 255, 255, 0));
-  WiFi.softAP(AP_SSID, AP_PASSWORD);
+  bool apStarted = WiFi.softAP(AP_SSID, AP_PASSWORD);
+  
+  if (!apStarted) {
+    Serial.println("Failed to start AP! Restarting...");
+    delay(1000);
+    ESP.restart();
+  }
   
   // Start DNS server to redirect all requests to our IP
   dnsServer.start(DNS_PORT, "*", apIP);
@@ -445,7 +461,7 @@ void startAPMode() {
   
   server.begin();
   
-  Serial.println("AP Mode started");
+  Serial.println("AP Mode started successfully");
   Serial.print("AP IP address: ");
   Serial.println(WiFi.softAPIP());
   
@@ -513,59 +529,33 @@ void setup() {
     WiFi.mode(WIFI_STA);
     wifiMulti.addAP(wifiSSID.c_str(), wifiPassword.c_str());
 
-    // Try to connect to WiFi with multiple attempts
-    bool connected = false;
-    int connectionAttempts = 0;
-    const int maxConnectionAttempts = 3;
+    // Show connecting status
+    tft.fillScreen(GC9A01A_BLACK);
+    displayCenteredText("Connecting to WiFi", 90, 2, GC9A01A_WHITE);
+    displayCenteredText(wifiSSID, 120, 2, GC9A01A_YELLOW);
     
-    while (!connected && connectionAttempts < maxConnectionAttempts) {
-      connectionAttempts++;
+    // Try to connect to WiFi (20 seconds timeout)
+    Serial.print("Connecting to WiFi...");
+    int attempts = 0;
+    while ((wifiMulti.run() != WL_CONNECTED) && attempts < 40) {
+      Serial.print(".");
       
-      // Show connecting status with attempt number
-      tft.fillScreen(GC9A01A_BLACK);
-      displayCenteredText("Connecting to WiFi", 90, 2, GC9A01A_WHITE);
-      String attemptStr = "Attempt " + String(connectionAttempts) + " of " + String(maxConnectionAttempts);
-      displayCenteredText(attemptStr, 120, 1, GC9A01A_CYAN);
-      displayCenteredText(wifiSSID, 140, 2, GC9A01A_YELLOW);
-      
-      // Wait for WiFi connection (20 seconds per attempt)
-      Serial.printf("WiFi connection attempt %d of %d...\n", connectionAttempts, maxConnectionAttempts);
-      int attempts = 0;
-      while ((wifiMulti.run() != WL_CONNECTED) && attempts < 40) {
-        Serial.print(".");
-        
-        // Show progress dots on screen
-        if (attempts % 10 == 0) {
-          String dots = "";
-          for (int i = 0; i < (attempts / 10); i++) {
-            dots += ".";
-          }
-          tft.fillRect(0, 170, 240, 20, GC9A01A_BLACK);
-          displayCenteredText(dots, 170, 2, GC9A01A_WHITE);
+      // Show progress dots on screen
+      if (attempts % 10 == 0) {
+        String dots = "";
+        for (int i = 0; i < (attempts / 10); i++) {
+          dots += ".";
         }
-        
-        delay(500);
-        attempts++;
+        tft.fillRect(0, 150, 240, 20, GC9A01A_BLACK);
+        displayCenteredText(dots, 150, 2, GC9A01A_WHITE);
       }
       
-      if (wifiMulti.run() == WL_CONNECTED) {
-        connected = true;
-        Serial.println(" connected!");
-      } else {
-        Serial.println(" failed");
-        
-        if (connectionAttempts < maxConnectionAttempts) {
-          // Show retry message
-          tft.fillScreen(GC9A01A_BLACK);
-          displayCenteredText("Connection Failed", 100, 2, GC9A01A_RED);
-          displayCenteredText("Retrying...", 130, 2, GC9A01A_YELLOW);
-          delay(2000);
-        }
-      }
+      delay(500);
+      attempts++;
     }
     
-    if (connected) {
-      Serial.println("WiFi connected successfully");
+    if (wifiMulti.run() == WL_CONNECTED) {
+      Serial.println(" connected!");
       
       tft.fillScreen(GC9A01A_BLACK);
       displayCenteredText("Connected!", 100, 3, GC9A01A_GREEN);
@@ -581,14 +571,20 @@ void setup() {
       lastWeatherUpdate = 0;
       lastTimeUpdate = 0;
     } else {
-      // All connection attempts failed - fall back to AP mode
-      Serial.println("All WiFi connection attempts failed. Starting AP mode...");
+      // WiFi connection failed - immediately fall back to AP mode
+      Serial.println(" failed!");
+      Serial.println("WiFi connection failed. Starting AP mode...");
       
       tft.fillScreen(GC9A01A_BLACK);
       displayCenteredText("WiFi Failed!", 80, 2, GC9A01A_RED);
       displayCenteredText("Starting", 110, 2, GC9A01A_YELLOW);
       displayCenteredText("Setup Mode", 140, 2, GC9A01A_YELLOW);
       delay(3000);
+      
+      // Clear WiFi settings and start AP mode for reconfiguration
+      WiFi.disconnect(true);
+      WiFi.mode(WIFI_OFF);
+      delay(100);
       
       // Start AP mode for reconfiguration
       startAPMode();
@@ -775,7 +771,7 @@ void displayWeather() {
   tft.print(locationName);
   
   // Weather icon in the center
-  drawWeatherIcon(weather, 120, 100, 25);
+  drawWeatherIcon(weather, 120, 95, 10);
   
   // Temperature - large and centered (moved up 20px)
   char tempStr[10];
