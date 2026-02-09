@@ -42,6 +42,12 @@ float longitude = 0.0;
 String userName = "";
 String locationName = "";
 
+// Timer variables
+int timerDuration = 270; // Default 270 minutes (4.5 hours)
+int timerRemaining = 0; // Minutes remaining
+unsigned long timerStartTime = 0; // When timer was started
+bool timerActive = false; // Is timer running
+
 // AP mode settings
 const char* AP_SSID = "WeatherPuck";
 const char* AP_PASSWORD = "12345678";
@@ -61,7 +67,7 @@ const int daylightOffset_sec = 3600;
 unsigned long lastWeatherUpdate = 0;
 unsigned long lastTimeUpdate = 0;
 const unsigned long WEATHER_UPDATE_INTERVAL = 3600000; // 1 hour (60 minutes)
-const unsigned long TIME_UPDATE_INTERVAL = 60000;       // 1 second
+const unsigned long TIME_UPDATE_INTERVAL = 30000;      // 30 seconds
 
 bool isConfigured = false;
 bool inAPMode = false;
@@ -504,6 +510,14 @@ void startWebServer() {
 
 void setup() {
   Serial.begin(115200);
+  Serial.setTimeout(100); // Set timeout for serial reads
+  
+  // Print welcome message with commands
+  Serial.println("\n\n=================================");
+  Serial.println("    Weather Puck v1.0");
+  Serial.println("=================================");
+  Serial.println("Type 'help' for available commands");
+  Serial.println("=================================\n");
   
   tft.begin();
   tft.fillScreen(GC9A01A_BLACK);
@@ -743,6 +757,54 @@ void updateTimeDisplay() {
   tft.print(dateStr);
 }
 
+// Draw simple horizontal progress bar below humidity
+void drawTimerBar() {
+  // Clear the timer bar area
+  tft.fillRect(50, 205, 140, 12, GC9A01A_BLACK);
+  
+  if (!timerActive) {
+    // Just show empty box when no timer
+    tft.drawRect(60, 208, 120, 6, GC9A01A_DARKGREY);
+    return;
+  }
+  
+  // Calculate progress (1.0 = full bar, 0.0 = empty)
+  float progress = (float)timerRemaining / (float)timerDuration;
+  
+  // Progress bar dimensions - smaller and centered
+  int barX = 60;
+  int barY = 208;
+  int barWidth = 120;
+  int barHeight = 6;
+  
+  // Draw bar outline
+  tft.drawRect(barX, barY, barWidth, barHeight, GC9A01A_WHITE);
+  
+  // Calculate filled width
+  int filledWidth = (int)((barWidth - 2) * progress);
+  
+  // Color based on time remaining
+  uint16_t color;
+  if (progress > 0.5) {
+    color = GC9A01A_GREEN;
+  } else if (progress > 0.25) {
+    color = GC9A01A_YELLOW;
+  } else {
+    color = GC9A01A_RED;
+  }
+  
+  // Draw filled portion
+  if (filledWidth > 0) {
+    tft.fillRect(barX + 1, barY + 1, filledWidth, barHeight - 2, color);
+  }
+  
+  // Show minutes remaining on the right
+  tft.setTextSize(1);
+  tft.setTextColor(GC9A01A_WHITE);
+  tft.setCursor(barX + barWidth + 5, barY - 2);
+  tft.print(String(timerRemaining) + "m");
+}
+
 void displayWeather() {
   // One Call API 3.0 structure
   const char* weather = doc["current"]["weather"][0]["main"];
@@ -786,31 +848,26 @@ void displayWeather() {
   tft.setTextSize(3);
   tft.print("F");
   
-  // Weather description - single line (moved up 20px)
+  // Weather description - moved up slightly
   tft.setTextSize(2);
   tft.setTextColor(GC9A01A_YELLOW);
   
   String descStr = String(description);
   tft.getTextBounds(descStr, 0, 0, &x1, &y1, &w, &h);
-  tft.setCursor((240 - w) / 2, 175);
+  tft.setCursor((240 - w) / 2, 170);
   tft.print(descStr);
   
-  // Humidity at bottom - centered (moved up 20px)
+  // Humidity - moved below description
   char humStr[20];
   sprintf(humStr, "Humidity %d%%", hum);
   tft.setTextSize(1);
   tft.setTextColor(GC9A01A_LIGHTGREY);
   tft.getTextBounds(humStr, 0, 0, &x1, &y1, &w, &h);
-  tft.setCursor((240 - w) / 2, 203);
+  tft.setCursor((240 - w) / 2, 190);
   tft.print(humStr);
   
-  // Show IP address at the very bottom in small text
-  String ipStr = WiFi.localIP().toString();
-  tft.setTextSize(1);
-  tft.setTextColor(GC9A01A_DARKGREY);
-  tft.getTextBounds(ipStr, 0, 0, &x1, &y1, &w, &h);
-  tft.setCursor((240 - w) / 2, 220);
-  tft.print(ipStr);
+  // Draw timer bar below humidity
+  drawTimerBar();
 }
 
 void fetchWeather() {
@@ -860,6 +917,58 @@ void fetchWeather() {
 }
 
 void loop() {
+  // Check for serial commands
+  if (Serial.available()) {
+    String command = Serial.readStringUntil('\n');
+    command.trim();
+    
+    if (command == "help") {
+      Serial.println("\n=== Weather Puck Commands ===");
+      Serial.println("start_timer HH:MM - Start timer (e.g., start_timer 2:30 for 2 hours 30 minutes)");
+      Serial.println("stop_timer        - Stop current timer");
+      Serial.println("status            - Show timer status");
+      Serial.println("help              - Show this help message");
+      Serial.println("=============================\n");
+    } else if (command.startsWith("start_timer ")) {
+      String timeStr = command.substring(12);
+      int colonIndex = timeStr.indexOf(':');
+      
+      if (colonIndex > 0) {
+        int hours = timeStr.substring(0, colonIndex).toInt();
+        int minutes = timeStr.substring(colonIndex + 1).toInt();
+        int totalMinutes = (hours * 60) + minutes;
+        
+        if (totalMinutes > 0 && totalMinutes <= 9999) {
+          timerDuration = totalMinutes;
+          timerRemaining = totalMinutes;
+          timerStartTime = millis();
+          timerActive = true;
+          Serial.printf("Timer started: %d hours %d minutes (%d total minutes)\n", hours, minutes, totalMinutes);
+          drawTimerBar(); // Immediately show the timer bar
+        } else {
+          Serial.println("Invalid timer duration. Use format HH:MM (max 9999 minutes)");
+        }
+      } else {
+        Serial.println("Invalid format. Use: start_timer HH:MM (e.g., start_timer 2:30)");
+      }
+    } else if (command == "stop_timer") {
+      timerActive = false;
+      timerRemaining = 0;
+      Serial.println("Timer stopped");
+      drawTimerBar(); // Update to show empty box
+    } else if (command == "status") {
+      if (timerActive) {
+        int hours = timerRemaining / 60;
+        int minutes = timerRemaining % 60;
+        Serial.printf("Timer active: %d:%02d remaining (%d minutes)\n", hours, minutes, timerRemaining);
+      } else {
+        Serial.println("No timer active");
+      }
+    } else if (command.length() > 0) {
+      Serial.println("Unknown command. Type 'help' for available commands.");
+    }
+  }
+  
   if (inAPMode) {
     // Handle DNS and web server in AP mode
     dnsServer.processNextRequest();
@@ -870,13 +979,32 @@ void loop() {
     
     unsigned long currentMillis = millis();
     
+    // Update timer every minute if active
+    static unsigned long lastMinuteUpdate = 0;
+    if (timerActive && (currentMillis - lastMinuteUpdate >= 60000 || lastMinuteUpdate == 0)) {
+      // Calculate remaining time
+      unsigned long elapsed = (currentMillis - timerStartTime) / 60000; // Convert to minutes
+      int newRemaining = timerDuration - elapsed;
+      
+      if (newRemaining <= 0) {
+        timerRemaining = 0;
+        timerActive = false;
+        Serial.println("Timer complete!");
+        drawTimerBar(); // Show empty box
+      } else if (newRemaining != timerRemaining) {
+        timerRemaining = newRemaining;
+        drawTimerBar(); // Update the timer bar
+      }
+      lastMinuteUpdate = currentMillis;
+    }
+    
     // Update weather every hour
     if (currentMillis - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL || lastWeatherUpdate == 0) {
       Serial.println("Updating weather data...");
       fetchWeather();
     }
     
-    // Update time display every second
+    // Update time display every 30 seconds
     if (currentMillis - lastTimeUpdate >= TIME_UPDATE_INTERVAL || lastTimeUpdate == 0) {
       updateTimeDisplay();
       lastTimeUpdate = currentMillis;
