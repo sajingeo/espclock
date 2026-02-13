@@ -18,10 +18,19 @@ A beautiful ESP32-based weather clock with a 1.28" round TFT display that shows 
 ## Hardware Requirements
 
 ### Components
-- **Microcontroller**: ESP32-C6
-- **Display**: 1.28" Round TFT LCD (240x240, GC9A01A driver)
-- **Buzzer**: Piezo buzzer with internal oscillator (optional)
+- **Microcontroller**: ESP32-C6 - [Amazon Link](https://a.co/d/00ZQccyt)
+- **Display**: 1.28" Round TFT LCD (240x240, GC9A01A driver) - [Amazon Link](https://a.co/d/00k75qq4)
+- **Buzzer**: Piezo buzzer with internal oscillator (optional) - [Amazon Link](https://a.co/d/0dXIUiMY)
 - **Enclosure**: [3D Printable Case (STL)](https://makerworld.com/en/models/1997138-sleek-screwless-enclosure-for-esp32-and-gca01#profileId-2149912)
+
+### Shopping List
+| Item | Description | Link | Required |
+|------|-------------|------|----------|
+| ESP32-C6 | Microcontroller board with WiFi | [Amazon](https://a.co/d/00ZQccyt) | ✅ Yes |
+| 1.28" Round TFT | GC9A01A 240x240 display | [Amazon](https://a.co/d/00k75qq4) | ✅ Yes |
+| Piezo Buzzer | For timer alerts | [Amazon](https://a.co/d/0dXIUiMY) | ⭕ Optional |
+| Jumper Wires | For connections | - | ✅ Yes |
+| USB-C Cable | For power and programming | - | ✅ Yes |
 
 ### Pinout Configuration
 | Component | ESP32 Pin | Function |
