@@ -24,6 +24,7 @@
 #define TFT_SCL D4
 #define TFT_RST D5
 #define TFT_MISO D6
+#define BUZZER_PIN D7
 
 WiFiMulti wifiMulti;
 Adafruit_GC9A01A tft(TFT_CS, TFT_DC, TFT_MOSI, TFT_SCL, TFT_RST, TFT_MISO);
@@ -508,9 +509,21 @@ void startWebServer() {
   Serial.println(WiFi.localIP());
 }
 
+// Play a short beep on the buzzer
+void playBeep(int duration = 50) {
+  // Simple digital beep - buzzer will use its internal oscillator
+  digitalWrite(BUZZER_PIN, HIGH);
+  delay(duration);
+  digitalWrite(BUZZER_PIN, LOW);
+}
+
 void setup() {
   Serial.begin(115200);
   Serial.setTimeout(100); // Set timeout for serial reads
+  
+  // Initialize buzzer pin
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
   
   // Print welcome message with commands
   Serial.println("\n\n=================================");
@@ -944,6 +957,7 @@ void loop() {
           timerStartTime = millis();
           timerActive = true;
           Serial.printf("Timer started: %d hours %d minutes (%d total minutes)\n", hours, minutes, totalMinutes);
+          playBeep(); // Beep when timer starts
           drawTimerBar(); // Immediately show the timer bar
         } else {
           Serial.println("Invalid timer duration. Use format HH:MM (max 9999 minutes)");
@@ -990,6 +1004,7 @@ void loop() {
         timerRemaining = 0;
         timerActive = false;
         Serial.println("Timer complete!");
+        playBeep(); // Beep when timer expires
         drawTimerBar(); // Show empty box
       } else if (newRemaining != timerRemaining) {
         timerRemaining = newRemaining;

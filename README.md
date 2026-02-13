@@ -2,6 +2,8 @@
 
 A beautiful ESP32-based weather clock with a 1.28" round TFT display that shows time, weather, and location information.
 
+![Weather Puck](desk_clock.jpg)
+
 ## Features
 
 - 🕐 **Real-time Clock**: Displays current time with updates every 30 seconds
@@ -15,15 +17,47 @@ A beautiful ESP32-based weather clock with a 1.28" round TFT display that shows 
 
 ## Hardware Requirements
 
+### Components
 - **Microcontroller**: ESP32-C6
-- **Display**: 1.28" Round TFT LCD (GC9A01A driver)
-- **Connections**:
-  - TFT_CS → D1
-  - TFT_DC → D2
-  - TFT_MOSI → D3
-  - TFT_SCL → D4
-  - TFT_RST → D5
-  - TFT_MISO → D6
+- **Display**: 1.28" Round TFT LCD (240x240, GC9A01A driver)
+- **Buzzer**: Piezo buzzer with internal oscillator (optional)
+- **Enclosure**: [3D Printable Case (STL)](https://makerworld.com/en/models/1997138-sleek-screwless-enclosure-for-esp32-and-gca01#profileId-2149912)
+
+### Pinout Configuration
+| Component | ESP32 Pin | Function |
+|-----------|-----------|----------|
+| TFT_CS | D1 | Chip Select |
+| TFT_DC | D2 | Data/Command |
+| TFT_MOSI | D3 | SPI Data Out |
+| TFT_SCL | D4 | SPI Clock |
+| TFT_RST | D5 | Reset |
+| TFT_MISO | D6 | SPI Data In |
+| BUZZER | D8 | Digital Output |
+
+### Wiring Diagram
+- Connect display pins according to the table above
+- Buzzer positive to D8, negative to GND
+- Power the display with 3.3V from ESP32
+- Ensure common ground between all components
+
+## Build Instructions
+
+### 3D Printed Enclosure
+1. Download the STL files from [MakerWorld](https://makerworld.com/en/models/1997138-sleek-screwless-enclosure-for-esp32-and-gca01#profileId-2149912)
+2. Print with the following settings:
+   - Layer height: 0.2mm
+   - Infill: 20%
+   - Support: Not required
+   - Material: PLA or PETG
+3. The enclosure features a sleek, screwless design
+4. Simply snap the ESP32 and display into place
+
+### Assembly
+1. Solder header pins to the ESP32-C6 if not pre-soldered
+2. Connect the display using jumper wires or custom PCB
+3. Attach the piezo buzzer to pin D8 (optional)
+4. Place components in the 3D printed enclosure
+5. Power via USB-C
 
 ## Software Dependencies
 
